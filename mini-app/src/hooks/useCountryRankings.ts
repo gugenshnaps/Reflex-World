@@ -12,7 +12,6 @@ export function useCountryRankings() {
   const load = useCallback(async () => {
     if (!supabase) {
       setRankings([])
-      setError('Supabase не настроен')
       setLoading(false)
       return
     }
@@ -25,20 +24,20 @@ export function useCountryRankings() {
         .from('countries_ranking')
         .select('country_code, month, avg_reaction, player_count, rank')
         .eq('month', month)
-        .order('rank', { ascending: true })
 
       if (dbError) {
-        setError(dbError.message)
+        console.warn('countries_ranking:', dbError.message)
         setRankings([])
       } else {
-        setRankings(
-          (data ?? [])
-            .filter((r) => r.rank != null)
-            .map((r) => enrichCountryRanking({ ...r, rank: r.rank as number })),
-        )
+        const sorted = (data ?? [])
+          .filter((r) => r.rank != null)
+          .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
+          .map((r) => enrichCountryRanking({ ...r, rank: r.rank as number }))
+        setRankings(sorted)
       }
     } catch (e) {
-      setError((e as Error).message)
+      // Telegram WebView sometimes throws opaque TypeError on fetch — map still works
+      console.warn('countries_ranking fetch failed', e)
       setRankings([])
     } finally {
       setLoading(false)

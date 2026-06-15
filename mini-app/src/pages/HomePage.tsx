@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom'
 
 export function HomePage() {
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
-  const { rankings, loading, error, month } = useCountryRankings()
+  const { rankings, loading, month } = useCountryRankings()
   const top3 = rankings.slice(0, 3)
   const selected = selectedCode ? rankings.find((c) => c.country_code === selectedCode) : null
 
@@ -37,12 +37,6 @@ export function HomePage() {
 
       {loading && (
         <p className="text-center text-sm text-white/40">Обновление рейтинга...</p>
-      )}
-
-      {error && (
-        <div className="card border-slow/30 bg-slow/10 text-center text-sm text-slow">
-          {error}
-        </div>
       )}
 
       {!loading && rankings.length === 0 && (
