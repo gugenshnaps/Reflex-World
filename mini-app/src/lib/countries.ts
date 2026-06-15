@@ -30,12 +30,26 @@ export const COUNTRY_NAMES: Record<string, string> = {
   TR: 'Турция',
   MX: 'Мексика',
   AR: 'Аргентина',
+  XK: 'Косово',
+  XS: 'Сомалиленд',
+  XC: 'Северный Кипр',
 }
 
 export const COUNTRY_CODES = Object.keys(COUNTRY_NAMES)
 
+const regionNames =
+  typeof Intl !== 'undefined' && Intl.DisplayNames
+    ? new Intl.DisplayNames(['ru'], { type: 'region' })
+    : null
+
 export function getCountryName(code: string): string {
-  return COUNTRY_NAMES[code] ?? code
+  const upper = code.toUpperCase()
+  if (COUNTRY_NAMES[upper]) return COUNTRY_NAMES[upper]
+  try {
+    return regionNames?.of(upper) ?? upper
+  } catch {
+    return upper
+  }
 }
 
 export function getFlagEmoji(code: string): string {

@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps'
 import { countryColorFromAvg } from '../lib/anticheat'
+import { resolveCountryCode } from '../lib/iso3166-numeric'
 import type { CountryRanking } from '../lib/types'
 
 const GEO_URL = `${import.meta.env.BASE_URL}world-countries.json`
@@ -16,26 +17,10 @@ interface WorldMapProps {
   onSelect: (code: string) => void
 }
 
-const ISO_NUM_TO_ALPHA2: Record<string, string> = {
-  '840': 'US', '643': 'RU', '276': 'DE', '392': 'JP', '076': 'BR',
-  '826': 'GB', '250': 'FR', '410': 'KR', '356': 'IN', '036': 'AU',
-  '124': 'CA', '380': 'IT', '724': 'ES', '528': 'NL', '752': 'SE',
-  '616': 'PL', '804': 'UA', '792': 'TR', '484': 'MX', '032': 'AR',
-}
-
-function resolveCode(geo: { id?: string; properties?: { iso_a2?: string } }): string | null {
-  if (geo.properties?.iso_a2 && geo.properties.iso_a2 !== '-99') {
-    return geo.properties.iso_a2
-  }
-  if (geo.id && ISO_NUM_TO_ALPHA2[geo.id]) {
-    return ISO_NUM_TO_ALPHA2[geo.id]
-  }
-  return null
-}
-
 export function WorldMap({ rankings, selectedCode, onSelect }: WorldMapProps) {
   const [zoom, setZoom] = useState(1)
   const [center, setCenter] = useState<[number, number]>([10, 20])
+  const dragRef = useRef(false)
 
   const rankingMap = useMemo(
     () => new Map(rankings.map((r) => [r.country_code.trim(), r])),
@@ -61,15 +46,21 @@ export function WorldMap({ rankings, selectedCode, onSelect }: WorldMapProps) {
             zoom={zoom}
             minZoom={0.8}
             maxZoom={6}
+            onMoveStart={() => {
+              dragRef.current = true
+            }}
             onMoveEnd={({ coordinates, zoom: z }) => {
               setCenter(coordinates)
               setZoom(z)
+              window.setTimeout(() => {
+                dragRef.current = false
+              }, 0)
             }}
           >
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
                 geographies.map((geo) => {
-                  const code = resolveCode(geo)
+                  const code = resolveCountryCode(geo)
                   const ranking = code ? rankingMap.get(code) : undefined
                   const fill = ranking
                     ? countryColorFromAvg(ranking.avg_reaction, minAvg, maxAvg)
@@ -80,7 +71,10 @@ export function WorldMap({ rankings, selectedCode, onSelect }: WorldMapProps) {
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      onClick={() => code && onSelect(code)}
+                      onClick={() => {
+                        if (!code || dragRef.current) return
+                        onSelect(code)
+                      }}
                       style={{
                         default: {
                           fill,
