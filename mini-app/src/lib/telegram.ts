@@ -1,9 +1,9 @@
 import type { TelegramUser } from './types'
 
 const MOCK_USER: TelegramUser = {
-  id: 742891034,
-  first_name: 'Yura',
-  username: 'yura_demo',
+  id: 999000001,
+  first_name: 'Dev',
+  username: 'local_dev',
   language_code: 'ru',
 }
 

@@ -1,27 +1,33 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getCountryName, getCurrentMonth } from '../lib/countries'
 import { supabase } from '../lib/supabase'
-import type { PlayerLeaderboardEntry } from '../lib/types'
+import type { PastWinner, PlayerLeaderboardEntry } from '../lib/types'
 
 export function usePlayerLeaderboard(myPlayerId?: string) {
   const [entries, setEntries] = useState<PlayerLeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const month = getCurrentMonth()
 
   const load = useCallback(async () => {
     if (!supabase) {
       setLoading(false)
+      setError('Supabase не настроен')
       return
     }
     setLoading(true)
-    const { data, error } = await supabase
+    setError(null)
+    const { data, error: dbError } = await supabase
       .from('monthly_leaderboard')
       .select('player_id, country_code, best_day_result, rank, players(name)')
       .eq('month', month)
+      .not('rank', 'is', null)
       .order('rank', { ascending: true })
       .limit(100)
 
-    if (!error && data) {
+    if (dbError) {
+      setError(dbError.message)
+    } else if (data) {
       setEntries(
         data.map((row) => {
           const playersRaw = row.players as { name: string } | { name: string }[] | null
@@ -29,10 +35,10 @@ export function usePlayerLeaderboard(myPlayerId?: string) {
           return {
             player_id: row.player_id,
             name: playerName ?? 'Игрок',
-          country_code: row.country_code.trim(),
-          best_day_result: row.best_day_result,
-          rank: row.rank ?? 0,
-          is_me: row.player_id === myPlayerId,
+            country_code: row.country_code.trim(),
+            best_day_result: row.best_day_result,
+            rank: row.rank as number,
+            is_me: row.player_id === myPlayerId,
           }
         }),
       )
@@ -44,14 +50,7 @@ export function usePlayerLeaderboard(myPlayerId?: string) {
     load()
   }, [load])
 
-  return { entries, loading, refresh: load, month }
-}
-
-export type PastWinner = {
-  month: string
-  country_code: string
-  country_name: string
-  total_usd: number
+  return { entries, loading, error, refresh: load, month }
 }
 
 export function usePastWinners() {

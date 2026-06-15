@@ -3,20 +3,21 @@ import { Bot, InlineKeyboard } from 'grammy'
 import { createClient } from '@supabase/supabase-js'
 
 const token = process.env.TELEGRAM_BOT_TOKEN
-const webAppUrl = process.env.VERCEL_URL ?? 'http://localhost:3236'
+const miniAppUrl =
+  process.env.MINI_APP_URL ?? 'https://gugenshnaps.github.io/Reflex-World/'
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
 
 if (!token) {
-  console.warn('TELEGRAM_BOT_TOKEN not set — bot will not start')
-  process.exit(0)
+  console.error('TELEGRAM_BOT_TOKEN not set — bot will not start')
+  process.exit(1)
 }
 
 const supabase =
   supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null
 
 const bot = new Bot(token)
-const appKeyboard = new InlineKeyboard().webApp('⚡ Играть', webAppUrl)
+const appKeyboard = new InlineKeyboard().webApp('⚡ Играть', miniAppUrl)
 
 function currentMonth(): string {
   const d = new Date()
@@ -39,6 +40,10 @@ bot.command('start', async (ctx) => {
 })
 
 bot.command('stats', async (ctx) => {
+  if (!supabase) {
+    await ctx.reply('📊 Открой Mini App для статистики.', { reply_markup: appKeyboard })
+    return
+  }
   const player = await getPlayer(ctx.from.id)
   if (!player) {
     await ctx.reply('Ты ещё не зарегистрирован. Открой Mini App!', { reply_markup: appKeyboard })
@@ -46,10 +51,11 @@ bot.command('stats', async (ctx) => {
   }
 
   const month = currentMonth()
-  const { data: history } = await supabase!
+  const { data: history } = await supabase
     .from('daily_results')
     .select('best_median')
     .eq('player_id', player.id)
+    .eq('is_flagged', false)
     .gte('date', `${month}-01`)
 
   const medians = (history ?? []).map((h) => h.best_median).filter((v) => v > 0)
@@ -66,8 +72,12 @@ bot.command('stats', async (ctx) => {
 })
 
 bot.command('country', async (ctx) => {
+  if (!supabase) {
+    await ctx.reply('🏳️ Открой Mini App.', { reply_markup: appKeyboard })
+    return
+  }
   const player = await getPlayer(ctx.from.id)
-  if (!player || !supabase) {
+  if (!player) {
     await ctx.reply('Открой Mini App для регистрации.', { reply_markup: appKeyboard })
     return
   }
@@ -81,7 +91,9 @@ bot.command('country', async (ctx) => {
     .maybeSingle()
 
   if (!ranking) {
-    await ctx.reply(`🏳️ Страна ${player.country_code} пока не в рейтинге.`, { reply_markup: appKeyboard })
+    await ctx.reply(`🏳️ Страна ${player.country_code.trim()} пока не в рейтинге.`, {
+      reply_markup: appKeyboard,
+    })
     return
   }
 
@@ -95,7 +107,7 @@ bot.command('country', async (ctx) => {
 
 bot.command('pool', async (ctx) => {
   if (!supabase) {
-    await ctx.reply('💰 Призовой банк — открой Mini App.', { reply_markup: appKeyboard })
+    await ctx.reply('💰 Открой Mini App.', { reply_markup: appKeyboard })
     return
   }
 
@@ -112,5 +124,5 @@ bot.command('pool', async (ctx) => {
 bot.catch((err) => console.error('Bot error:', err))
 
 bot.start({
-  onStart: () => console.log(`Reflex World bot running · Mini App: ${webAppUrl}`),
+  onStart: () => console.log(`Reflex World bot · Mini App: ${miniAppUrl}`),
 })

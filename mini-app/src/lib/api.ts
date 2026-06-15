@@ -2,17 +2,24 @@ import { getTelegramUser } from './telegram'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const devKey = import.meta.env.VITE_DEV_API_KEY
+
+function assertConfigured() {
+  if (!url || !anonKey) {
+    throw new Error('Supabase not configured — check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY')
+  }
+}
 
 function getInitData(): string {
   return window.Telegram?.WebApp?.initData ?? ''
 }
 
 function authHeaders(): Record<string, string> {
+  assertConfigured()
   const initData = getInitData()
+  const devKey = import.meta.env.VITE_DEV_API_KEY
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    apikey: anonKey,
+    apikey: anonKey!,
     Authorization: `Bearer ${anonKey}`,
   }
   if (initData) {
@@ -30,6 +37,7 @@ function telegramBody(extra: Record<string, unknown> = {}): Record<string, unkno
 }
 
 async function callFunction<T>(name: string, body: Record<string, unknown> = {}): Promise<T> {
+  assertConfigured()
   const res = await fetch(`${url}/functions/v1/${name}`, {
     method: 'POST',
     headers: authHeaders(),

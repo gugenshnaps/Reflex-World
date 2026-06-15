@@ -2,8 +2,19 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-telegram-init-data, x-dev-key',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-telegram-init-data, x-dev-key',
 }
+
+export const MIN_VALID_MS = 100
+export const MAX_VALID_MS = 800
+export const SUSPICIOUS_VARIANCE_MS = 10
+export const MAX_FLAGGED_SESSIONS = 3
+
+export const ALLOWED_COUNTRIES = new Set([
+  'US', 'RU', 'DE', 'JP', 'BR', 'GB', 'FR', 'KR', 'IN', 'AU',
+  'CA', 'IT', 'ES', 'NL', 'SE', 'PL', 'UA', 'TR', 'MX', 'AR',
+])
 
 export function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -61,7 +72,12 @@ export async function validateTelegramInitData(
 
   const userRaw = params.get('user')
   if (!userRaw) return null
-  return JSON.parse(userRaw)
+
+  try {
+    return JSON.parse(userRaw)
+  } catch {
+    return null
+  }
 }
 
 export async function resolveTelegramUser(
@@ -73,6 +89,9 @@ export async function resolveTelegramUser(
 
   const fromInit = await validateTelegramInitData(initData, botToken)
   if (fromInit) return fromInit
+
+  // Dev bypass ONLY when explicitly enabled (never in production)
+  if (Deno.env.get('ALLOW_DEV') !== 'true') return null
 
   const devKey = req.headers.get('x-dev-key')
   const expectedDevKey = Deno.env.get('DEV_API_KEY')
@@ -89,10 +108,6 @@ export function createServiceClient() {
   return createClient(url, key)
 }
 
-export const MIN_VALID_MS = 100
-export const MAX_VALID_MS = 800
-export const SUSPICIOUS_VARIANCE_MS = 10
-
 export function median(values: number[]): number {
   if (values.length === 0) return 0
   const sorted = [...values].sort((a, b) => a - b)
@@ -102,7 +117,11 @@ export function median(values: number[]): number {
     : Math.round((sorted[mid - 1] + sorted[mid]) / 2)
 }
 
-export function sanitizeAttempts(raw: number[]): { attempts: number[]; bestMedian: number; flagged: boolean } {
+export function sanitizeAttempts(raw: number[]): {
+  attempts: number[]
+  bestMedian: number
+  flagged: boolean
+} {
   const attempts = raw.map((ms) => {
     if (ms < MIN_VALID_MS || ms > MAX_VALID_MS) return 0
     return Math.round(ms)
@@ -128,4 +147,22 @@ export function currentMonth(): string {
 
 export function todayUtc(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+export function isValidCountry(code: string): boolean {
+  return code.length === 2 && ALLOWED_COUNTRIES.has(code.toUpperCase())
+}
+
+export function isEligibleForRanking(
+  tier: string,
+  isActive: boolean,
+  flaggedSessions: number,
+  sessionFlagged: boolean,
+): boolean {
+  return (
+    tier === 'competitor' &&
+    isActive !== false &&
+    flaggedSessions <= MAX_FLAGGED_SESSIONS &&
+    !sessionFlagged
+  )
 }

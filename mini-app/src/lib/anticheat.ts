@@ -1,5 +1,4 @@
-import type { AttemptResult } from './types'
-
+// Client-side anticheat (UI preview only — server validates in Edge Functions)
 export const MIN_VALID_MS = 100
 export const MAX_VALID_MS = 800
 export const SUSPICIOUS_VARIANCE_MS = 10
@@ -14,7 +13,7 @@ export function median(values: number[]): number {
     : Math.round((sorted[mid - 1] + sorted[mid]) / 2)
 }
 
-export function validateAttempt(ms: number, tooEarly: boolean): AttemptResult {
+export function validateAttempt(ms: number, tooEarly: boolean): import('./types').AttemptResult {
   if (tooEarly) {
     return { ms: null, valid: false, reason: 'too_early' }
   }
@@ -30,9 +29,7 @@ export function validateAttempt(ms: number, tooEarly: boolean): AttemptResult {
 export function checkSuspiciousVariance(attempts: number[]): boolean {
   const valid = attempts.filter((a) => a >= MIN_VALID_MS && a <= MAX_VALID_MS)
   if (valid.length < 5) return false
-  const min = Math.min(...valid)
-  const max = Math.max(...valid)
-  return max - min <= SUSPICIOUS_VARIANCE_MS
+  return Math.max(...valid) - Math.min(...valid) <= SUSPICIOUS_VARIANCE_MS
 }
 
 export function randomDelay(): number {

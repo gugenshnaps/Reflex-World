@@ -29,6 +29,13 @@ function resolveCode(geo: { id?: string; properties?: { iso_a2?: string } }): st
 
 export function WorldMap({ rankings, selectedCode, onSelect }: WorldMapProps) {
   const rankingMap = new Map(rankings.map((r) => [r.country_code, r]))
+  if (rankings.length === 0) {
+    return (
+      <div className="card overflow-hidden p-4 text-center muted">
+        Нет данных по странам
+      </div>
+    )
+  }
   const avgs = rankings.map((r) => r.avg_reaction)
   const minAvg = Math.min(...avgs)
   const maxAvg = Math.max(...avgs)

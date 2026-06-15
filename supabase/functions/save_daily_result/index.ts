@@ -2,6 +2,7 @@ import {
   createServiceClient,
   currentMonth,
   handleCors,
+  isEligibleForRanking,
   jsonResponse,
   resolveTelegramUser,
   sanitizeAttempts,
@@ -34,6 +35,7 @@ Deno.serve(async (req) => {
 
     if (playerError) return jsonResponse({ error: playerError.message }, 500)
     if (!player) return jsonResponse({ error: 'Player not found' }, 404)
+    if (!player.is_active) return jsonResponse({ error: 'Account inactive' }, 403)
 
     const { attempts, bestMedian, flagged } = sanitizeAttempts(
       rawAttempts.map((n: unknown) => Number(n)),
@@ -60,20 +62,28 @@ Deno.serve(async (req) => {
 
     if (saveError) return jsonResponse({ error: saveError.message }, 500)
 
+    const newFlaggedCount = (player.flagged_sessions ?? 0) + (flagged ? 1 : 0)
     if (flagged) {
       await supabase
         .from('players')
-        .update({ flagged_sessions: (player.flagged_sessions ?? 0) + 1 })
+        .update({ flagged_sessions: newFlaggedCount })
         .eq('id', player.id)
     }
 
     let monthlyBest = bestMedian
+    const countsForRanking = isEligibleForRanking(
+      player.tier,
+      player.is_active,
+      newFlaggedCount,
+      flagged,
+    )
 
-    if (player.tier === 'competitor' && (player.flagged_sessions ?? 0) <= 3) {
+    if (countsForRanking) {
       const { data: monthDays } = await supabase
         .from('daily_results')
         .select('best_median')
         .eq('player_id', player.id)
+        .eq('is_flagged', false)
         .gte('date', `${month}-01`)
         .lte('date', today)
 
@@ -98,7 +108,7 @@ Deno.serve(async (req) => {
       best_median: bestMedian,
       monthly_best: monthlyBest,
       flagged,
-      counts_for_ranking: player.tier === 'competitor',
+      counts_for_ranking: countsForRanking,
     })
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500)

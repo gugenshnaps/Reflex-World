@@ -34,7 +34,7 @@ export function GamePage() {
 
   const alreadyPlayed = Boolean(todayResult)
   const validAttempts = attempts.filter((a) => a.valid && a.ms !== null).map((a) => a.ms!)
-  const sessionBest = validAttempts.length > 0 ? Math.min(...validAttempts) : null
+  const sessionMedian = validAttempts.length > 0 ? median(validAttempts) : null
   const isSubscribed = player?.tier === 'competitor'
 
   const startAttempt = useCallback(() => {
@@ -94,7 +94,6 @@ export function GamePage() {
   useEffect(() => () => clearTimeout(timerRef.current), [])
 
   const suspicious = checkSuspiciousVariance(validAttempts)
-  const sessionMedian = validAttempts.length > 0 ? median(validAttempts) : null
 
   if (alreadyPlayed && todayResult) {
     return (
@@ -177,15 +176,12 @@ export function GamePage() {
             {formatMs(currentMs)}
           </span>
         )}
-        {phase === 'done' && sessionBest !== null && (
+        {phase === 'done' && sessionMedian !== null && (
           <div className="text-center">
-            <p className="text-sm text-white/50">Лучший результат</p>
-            <p className="text-4xl font-bold" style={{ color: reactionColor(sessionBest) }}>
-              {formatMs(sessionBest)}
+            <p className="text-sm text-white/50">Медиана сессии</p>
+            <p className="text-4xl font-bold" style={{ color: reactionColor(sessionMedian) }}>
+              {formatMs(sessionMedian)}
             </p>
-            {sessionMedian !== null && (
-              <p className="mt-2 text-sm text-white/40">Медиана: {sessionMedian} ms</p>
-            )}
           </div>
         )}
       </button>
