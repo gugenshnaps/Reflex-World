@@ -1,5 +1,5 @@
 declare module 'react-simple-maps' {
-  import type { ReactNode, CSSProperties } from 'react'
+  import type { ReactNode, CSSProperties, MouseEvent, TouchEvent } from 'react'
 
   export interface Geography {
     rsmKey: string
@@ -23,7 +23,10 @@ declare module 'react-simple-maps' {
 
   export interface GeographyProps {
     geography: Geography
-    onClick?: () => void
+    onClick?: (event: MouseEvent<SVGPathElement>) => void
+    onMouseDown?: (event: MouseEvent<SVGPathElement>) => void
+    onTouchStart?: (event: TouchEvent<SVGPathElement>) => void
+    onTouchEnd?: (event: TouchEvent<SVGPathElement>) => void
     style?: {
       default?: CSSProperties
       hover?: CSSProperties
