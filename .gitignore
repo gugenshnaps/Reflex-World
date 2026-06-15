@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+bot/.env
+mini-app/node_modules/
+mini-app/dist/
+bot/node_modules/
+*.log
+.DS_Store
