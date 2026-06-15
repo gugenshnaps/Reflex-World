@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import { countryColorFromAvg } from '../lib/anticheat'
 import type { CountryRanking } from '../lib/types'
 
-const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
+const GEO_URL = `${import.meta.env.BASE_URL}world-countries.json`
 
 interface WorldMapProps {
   rankings: CountryRanking[]
@@ -28,17 +29,27 @@ function resolveCode(geo: { id?: string; properties?: { iso_a2?: string } }): st
 }
 
 export function WorldMap({ rankings, selectedCode, onSelect }: WorldMapProps) {
-  const rankingMap = new Map(rankings.map((r) => [r.country_code, r]))
-  if (rankings.length === 0) {
+  const [geoError, setGeoError] = useState(false)
+  const rankingMap = new Map(rankings.map((r) => [r.country_code.trim(), r]))
+
+  const avgs = rankings.map((r) => r.avg_reaction)
+  const minAvg = avgs.length > 0 ? Math.min(...avgs) : 200
+  const maxAvg = avgs.length > 0 ? Math.max(...avgs) : 400
+
+  useEffect(() => {
+    fetch(GEO_URL, { method: 'HEAD' })
+      .then((r) => { if (!r.ok) setGeoError(true) })
+      .catch(() => setGeoError(true))
+  }, [])
+
+  if (geoError) {
     return (
-      <div className="card overflow-hidden p-4 text-center muted">
-        Нет данных по странам
+      <div className="card p-6 text-center">
+        <p className="text-white/70">Карта временно недоступна</p>
+        <p className="muted mt-1 text-xs">Попробуй обновить страницу</p>
       </div>
     )
   }
-  const avgs = rankings.map((r) => r.avg_reaction)
-  const minAvg = Math.min(...avgs)
-  const maxAvg = Math.max(...avgs)
 
   return (
     <div className="card overflow-hidden p-0">
@@ -63,22 +74,22 @@ export function WorldMap({ rankings, selectedCode, onSelect }: WorldMapProps) {
                 <Geography
                   key={geo.rsmKey}
                   geography={geo}
-                  onClick={() => code && ranking && onSelect(code)}
+                  onClick={() => code && onSelect(code)}
                   style={{
                     default: {
                       fill,
                       stroke: isSelected ? '#7C3AED' : '#07070E',
                       strokeWidth: isSelected ? 1.2 : 0.4,
                       outline: 'none',
-                      cursor: ranking ? 'pointer' : 'default',
-                      opacity: ranking ? 1 : 0.35,
+                      cursor: 'pointer',
+                      opacity: ranking ? 1 : 0.5,
                     },
                     hover: {
-                      fill: ranking ? '#7C3AED' : fill,
+                      fill: ranking ? '#7C3AED' : '#2a2a40',
                       stroke: '#7C3AED',
                       strokeWidth: 0.8,
                       outline: 'none',
-                      cursor: ranking ? 'pointer' : 'default',
+                      cursor: 'pointer',
                     },
                     pressed: { fill, outline: 'none' },
                   }}
@@ -93,6 +104,9 @@ export function WorldMap({ rankings, selectedCode, onSelect }: WorldMapProps) {
           <span className="inline-block h-2 w-6 rounded-full bg-fast" />
           Быстро
         </div>
+        <span className="text-[10px] text-white/30">
+          {rankings.length > 0 ? `${rankings.length} стран в рейтинге` : 'Нет данных — карта серая'}
+        </span>
         <div className="flex items-center gap-1.5 text-[10px] text-white/50">
           <span className="inline-block h-2 w-6 rounded-full bg-slow" />
           Медленно

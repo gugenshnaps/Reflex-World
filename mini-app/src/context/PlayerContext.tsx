@@ -58,6 +58,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (err.status === 404) {
         setNeedsRegistration(true)
         setPlayer(null)
+      } else if (err.status === 401) {
+        setNeedsRegistration(true)
+        setPlayer(null)
+        setError('Открой приложение через Telegram')
       } else {
         setError(err.message)
       }

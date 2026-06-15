@@ -11,28 +11,38 @@ export function useCountryRankings() {
 
   const load = useCallback(async () => {
     if (!supabase) {
-      setLoading(false)
+      setRankings([])
       setError('Supabase не настроен')
+      setLoading(false)
       return
     }
+
     setLoading(true)
     setError(null)
-    const { data, error: dbError } = await supabase
-      .from('countries_ranking')
-      .select('country_code, month, avg_reaction, player_count, rank')
-      .eq('month', month)
-      .order('rank', { ascending: true, nullsFirst: false })
 
-    if (dbError) {
-      setError(dbError.message)
-    } else if (data) {
-      setRankings(
-        data
-          .filter((r) => r.rank != null)
-          .map((r) => enrichCountryRanking({ ...r, rank: r.rank as number })),
-      )
+    try {
+      const { data, error: dbError } = await supabase
+        .from('countries_ranking')
+        .select('country_code, month, avg_reaction, player_count, rank')
+        .eq('month', month)
+        .order('rank', { ascending: true })
+
+      if (dbError) {
+        setError(dbError.message)
+        setRankings([])
+      } else {
+        setRankings(
+          (data ?? [])
+            .filter((r) => r.rank != null)
+            .map((r) => enrichCountryRanking({ ...r, rank: r.rank as number })),
+        )
+      }
+    } catch (e) {
+      setError((e as Error).message)
+      setRankings([])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [month])
 
   useEffect(() => {
